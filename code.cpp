@@ -11,6 +11,7 @@ enum state {square,cross,uncertain,wrong};
 vector<vector<char>> board;
 vector<vector<int>> rows;
 vector<vector<int>> cols;
+vector<vector<char>> solution;
 bool foundSolution = false;
 bool isStepByStep = false;
 
@@ -370,6 +371,7 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
             print_board();
             cout << "Found solution" << endl;
             foundSolution = true;
+            solution = board;
         }
         return;
     }
@@ -510,4 +512,17 @@ int main(int argc, const char * argv[]) {
     cout << "Time taken: " << chrono::duration_cast<chrono::milliseconds>(stop - start).count() << "ms" << endl;
     //Show cursor
     cout << "\033[?25h";
+    fstream output;
+    output.open("output_" + string(argv[1]),ios::out);
+    for (int i = 0; i < solution.size(); i++)
+    {
+        for (int j = 0; j < solution[i].size(); j++)
+        {
+            output << solution[i][j];
+        }
+        output << endl;
+    }
+    output.close();
+    cout << "Output file: output_" << argv[1] << endl;
+    return 0;
 }
