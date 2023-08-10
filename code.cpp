@@ -281,6 +281,81 @@ bool isNonogramComplete(){
     }
     return true;
 }
+bool checkNonogramRowSoFar(int row, int col){
+    int current_filled_square = 0;
+    int rows_index = 0;
+    bool isComplete = false;
+    for(int i = 0; i <= col; i++){
+        if(board[row][i] == FILL){
+            if (isComplete){
+                return false;
+            }
+            current_filled_square++;
+        }
+        else if(board[row][i] == CROSS && current_filled_square != 0){
+            if (current_filled_square != rows[row][rows_index]){
+                return false;
+            }
+            rows_index++;
+            if (rows_index == rows[row].size()){
+                isComplete = true;
+            }
+            current_filled_square = 0;
+        }
+    }
+    if(!isComplete){
+        if (col == board[row].size() - 1){
+            if (rows_index != rows[row].size() - 1){
+                return false;
+            }
+            else{
+                return current_filled_square == rows[row][rows_index];
+            }
+        }
+        else{
+            return current_filled_square <= rows[row][rows_index];
+        }
+    }
+    return true;
+}
+
+bool checkNonogramColSoFar(int row, int col){
+    int current_filled_square = 0;
+    int cols_index = 0;
+    bool isComplete = false;
+    for(int i = 0; i <= row; i++){
+        if(board[i][col] == FILL){
+            if (isComplete){
+                return false;
+            }
+            current_filled_square++;
+        }
+        else if(board[i][col] == CROSS && current_filled_square != 0){
+            if (current_filled_square != cols[col][cols_index]){
+                return false;
+            }
+            cols_index++;
+            if (cols_index == cols[col].size()){
+                isComplete = true;
+            }
+            current_filled_square = 0;
+        }
+    }
+    if(!isComplete){
+        if (row == board.size() - 1){
+            if (cols_index != cols[col].size() - 1){
+                return false;
+            }
+            else{
+                return current_filled_square == cols[col][cols_index];
+            }
+        }
+        else{
+            return current_filled_square <= cols[col][cols_index];
+        }
+    }
+    return true;
+}
 
 
 void backtrack(vector<vector<bool>> &visited, int row, int col){
@@ -313,7 +388,6 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
     }
     state row_state = nonogram_row_heuristic(row,col);
     state col_state = nonogram_col_heuristic(row,col);
-    //TODO: Check if it violates the nonogram rules
     switch (row_state){
         case wrong:
             return;
@@ -323,7 +397,9 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
                 case uncertain:
                     visited[row][col] = true;
                     board[row][col] = CROSS;
-                    backtrack(visited,next_row,next_col);
+                    if (checkNonogramRowSoFar(row,col) && checkNonogramColSoFar(row,col)){
+                        backtrack(visited,next_row,next_col);
+                    }
                     visited[row][col] = false;
                     board[row][col] = UNFILL;
                     break;
@@ -340,23 +416,31 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
                 case cross:
                     visited[row][col] = true;
                     board[row][col] = CROSS;
-                    backtrack(visited,next_row,next_col);
+                    if (checkNonogramRowSoFar(row,col) && checkNonogramColSoFar(row,col)){
+                        backtrack(visited,next_row,next_col);
+                    }
                     visited[row][col] = false;
                     board[row][col] = UNFILL;
                     break;
                 case square:
                     visited[row][col] = true;
                     board[row][col] = FILL;
-                    backtrack(visited,next_row,next_col);
+                    if (checkNonogramRowSoFar(row,col) && checkNonogramColSoFar(row,col)){
+                        backtrack(visited,next_row,next_col);
+                    }
                     visited[row][col] = false;
                     board[row][col] = UNFILL;
                     break;
                 case uncertain:
                     visited[row][col] = true;
                     board[row][col] = CROSS;
-                    backtrack(visited,next_row,next_col);
+                    if (checkNonogramRowSoFar(row,col) && checkNonogramColSoFar(row,col)){
+                        backtrack(visited,next_row,next_col);
+                    }
                     board[row][col] = FILL;
-                    backtrack(visited,next_row,next_col);
+                    if (checkNonogramRowSoFar(row,col) && checkNonogramColSoFar(row,col)){
+                        backtrack(visited,next_row,next_col);
+                    }
                     visited[row][col] = false;
                     board[row][col] = UNFILL;
                     break;
