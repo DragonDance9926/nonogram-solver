@@ -122,11 +122,9 @@ state nonogram_row_heuristic(int row, int col){
         total_sum += rows[row][i];
     }
     total_sum -= total_filled_square;
-    if (board[row].size() - col < total_sum){
+    if (board[row].size() - col < total_sum ||(col == board[row].size() - 1 && rows_index < rows[row].size() - 1)){
         return wrong;
     }
-
-
     if (isComplete){
         return cross;
     }
@@ -171,7 +169,7 @@ state nonogram_col_heuristic(int row, int col){
         total_sum += cols[col][i];
     }
     total_sum -= total_filled_square;
-    if (board.size() - row < total_sum){
+    if (board.size() - row < total_sum || (row == board.size() - 1 && cols_index < cols[col].size() - 1)){
         return wrong;
     }
     if (isComplete){
@@ -190,8 +188,8 @@ state nonogram_col_heuristic(int row, int col){
 }
 
 void print_board(){
-    //Clear the terminal
-    system("cls");
+    //Set cursor position to top left corner
+    cout << "\033[0;0H";
     for(int i = 0; i < board.size(); i++){
         for(int j = 0; j < board[i].size(); j++){
             cout << board[i][j];
@@ -315,7 +313,7 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
     }
     state row_state = nonogram_row_heuristic(row,col);
     state col_state = nonogram_col_heuristic(row,col);
-    
+    //TODO: Check if it violates the nonogram rules
     switch (row_state){
         case wrong:
             return;
@@ -388,6 +386,9 @@ int main(int argc, const char * argv[]) {
         cout << "Usage: ./nonogram <input_file> <0 for only show solution, 1 for showing the steps>" << endl;
         return 0;
     }
+    system("cls");
+    //Hide cursor
+    cout << "\033[?25l";
     fstream file;
     file.open(argv[1]);
     isStepByStep = argv[2][0] == '1';
@@ -423,4 +424,6 @@ int main(int argc, const char * argv[]) {
     backtrack(visited,0,0);
     auto stop = chrono::high_resolution_clock::now();
     cout << "Time taken: " << chrono::duration_cast<chrono::milliseconds>(stop - start).count() << "ms" << endl;
+    //Show cursor
+    cout << "\033[?25h";
 }
