@@ -12,6 +12,7 @@ vector<vector<char>> board;
 vector<vector<int>> rows;
 vector<vector<int>> cols;
 bool foundSolution = false;
+bool isStepByStep = false;
 
 vector<int> parseInt(string &line){
     vector<int> res;
@@ -288,9 +289,13 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
     if (foundSolution){
         return;
     }
-    print_board();
+    if (isStepByStep){
+        print_board();
+    }
     if (row == board.size()){
         if (isNonogramComplete()){
+            print_board();
+            cout << "Found solution" << endl;
             foundSolution = true;
         }
         return;
@@ -378,9 +383,14 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
 }
 
 
-int main(){
+int main(int argc, const char * argv[]) {
+    if (argc != 3){
+        cout << "Usage: ./nonogram <input_file> <0 for only show solution, 1 for showing the steps>" << endl;
+        return 0;
+    }
     fstream file;
-    file.open("input3.txt");
+    file.open(argv[1]);
+    isStepByStep = argv[2][0] == '1';
     string line;
     int row_size,col_size;
     line = "";
