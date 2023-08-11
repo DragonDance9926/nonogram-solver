@@ -2,8 +2,8 @@
 #include <conio.h>
 using namespace std;
 #define FILL '$'
-#define CROSS '.'
-#define UNFILL ' '
+#define CROSS ' '
+#define UNFILL '.'
 
 
 enum state {square,cross,uncertain,wrong};
@@ -363,9 +363,6 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
     if (foundSolution){
         return;
     }
-    if (isStepByStep){
-        print_board();
-    }
     if (row == board.size()){
         if (isNonogramComplete()){
             print_board();
@@ -387,6 +384,9 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
     if (visited[row][col]){
         backtrack(visited,next_row,next_col);
         return; 
+    }
+    if (isStepByStep){
+        print_board();
     }
     state row_state = nonogram_row_heuristic(row,col);
     state col_state = nonogram_col_heuristic(row,col);
@@ -509,8 +509,23 @@ int main(int argc, const char * argv[]) {
     nonogram_quick_place(visited);
     backtrack(visited,0,0);
     auto stop = chrono::high_resolution_clock::now();
-    cout << "Time taken: " << chrono::duration_cast<chrono::milliseconds>(stop - start).count() << "ms" << endl;
-    //Show cursor
+    auto duration = chrono::duration_cast<chrono::microseconds>(stop-start);
+    //Print time in minutes if it takes more than 1 minute
+    //Print time in seconds if it takes less than 1 minute
+    //Print time in milliseconds if it takes less than 1 second
+    //Otherwise print time in microseconds
+    if (duration.count() > 60000000){
+        cout << "Time taken: " << duration.count() / 60000000.0 << " minutes" << endl;
+    }
+    else if (duration.count() > 1000000){
+        cout << "Time taken: " << duration.count() / 1000000.0 << " seconds" << endl;
+    }
+    else if (duration.count() > 1000){
+        cout << "Time taken: " << duration.count() / 1000.0 << " milliseconds" << endl;
+    }
+    else{
+        cout << "Time taken: " << duration.count() << " microseconds" << endl;
+    }
     cout << "\033[?25h";
     fstream output;
     output.open("output_" + string(argv[1]),ios::out);
