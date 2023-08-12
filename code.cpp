@@ -435,11 +435,11 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
                     break;
                 case uncertain:
                     visited[row][col] = true;
-                    board[row][col] = CROSS;
+                    board[row][col] = FILL;
                     if (checkNonogramRowSoFar(row,col) && checkNonogramColSoFar(row,col)){
                         backtrack(visited,next_row,next_col);
                     }
-                    board[row][col] = FILL;
+                    board[row][col] = CROSS;
                     if (checkNonogramRowSoFar(row,col) && checkNonogramColSoFar(row,col)){
                         backtrack(visited,next_row,next_col);
                     }
