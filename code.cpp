@@ -14,6 +14,7 @@ vector<vector<int>> cols;
 vector<vector<char>> solution;
 bool foundSolution = false;
 bool isStepByStep = false;
+bool transposeMode = false;
 
 vector<int> parseInt(string &line){
     vector<int> res;
@@ -191,6 +192,15 @@ state nonogram_col_heuristic(int row, int col){
 void print_board(){
     //Set cursor position to top left corner
     cout << "\033[0;0H";
+    if (transposeMode){
+        for(int i = 0; i < board[0].size(); i++){
+            for(int j = 0; j < board.size(); j++){
+                cout << board[j][i];
+            }
+            cout << endl;
+        }
+        return;
+    }
     for(int i = 0; i < board.size(); i++){
         for(int j = 0; j < board[i].size(); j++){
             cout << board[i][j];
@@ -467,10 +477,87 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
 }
 
 
+void superposition (string &s, int size, vector<int> &rows,vector<bool> &super_postion_cross, vector<bool> &super_postion_square, int index = 0, int rows_index = 0, int current_filled_square = 0){
+    //cout << "String: " << s << " Index: " << index << " Rows_index: " << rows_index << " Current_filled_square: " << current_filled_square << endl;
+    if (index == size){
+        if (rows_index == rows.size() || (rows_index == rows.size() - 1 && current_filled_square == rows[rows_index])){
+            //cout << s << endl;
+            for (int i = 0; i < size; i++){
+                if (s[i] == CROSS){
+                    super_postion_square[i] = false;
+                }
+                else if (s[i] == FILL){
+                    super_postion_cross[i] = false;
+                }
+            }
+        }
+        return;
+    }
+    int sum = 0;
+    for (int i = rows_index; i < rows.size(); i++){
+        sum += rows[i];
+    }
+    if (sum  - current_filled_square > size - index){
+        return;
+    }
+
+
+
+   if (s[index] != UNFILL){
+    if (s[index] == FILL){
+        superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index, current_filled_square + 1);
+    }
+    else{
+        if (current_filled_square == 0){
+            superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index, 0);
+        }
+        else if (current_filled_square < rows[rows_index]){
+            superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index, current_filled_square + 1);
+        }
+        else if (current_filled_square == rows[rows_index]){
+            superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index + 1, 0);
+        }
+    }
+   }
+   else{
+        if (rows_index == rows.size()){
+            //cout << "Choose CROSS" << endl;
+            s[index] = CROSS;
+            superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index, 0);
+            s[index] = UNFILL;
+        }
+        else if (current_filled_square == 0){
+            //cout << "Choose BOTH" << endl;
+            s[index] = CROSS;
+            superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index, 0);
+            s[index] = FILL;
+            superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index, 1);
+            s[index] = UNFILL;
+        }
+        else if (current_filled_square < rows[rows_index]){
+            //cout << "Choose FILL" << endl;
+            s[index] = FILL;
+            superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index, current_filled_square + 1);
+            s[index] = UNFILL;
+        }
+        else if (current_filled_square == rows[rows_index]){
+            //cout << "Choose CROSS" << endl;
+            s[index] = CROSS;
+            superposition(s, size, rows, super_postion_cross, super_postion_square, index + 1, rows_index + 1, 0);
+            s[index] = UNFILL;
+        }
+   }
+}
+
+
 int main(int argc, const char * argv[]) {
-    if (argc != 3){
-        cout << "Usage: ./nonogram <input_file> <0 for only show solution, 1 for showing the steps>" << endl;
+    
+    if (argc < 3){
+        cout << "Usage: ./nonogram <input_file> <0 for only show solution, 1 for showing the steps> <0 for normal mode, 1 for transpose mode if not specified, it will determined by the input file>" << endl;
         return 0;
+    }
+    if (argc == 4){
+        transposeMode = argv[3][0] == '1';
     }
     system("cls");
     fstream file;
@@ -487,8 +574,19 @@ int main(int argc, const char * argv[]) {
     int row_size,col_size;
     line = "";
     getline(file,line);
-    row_size = parseInt(line)[1];
-    col_size = parseInt(line)[0];
+    if (transposeMode){
+        col_size = parseInt(line)[1];
+        row_size = parseInt(line)[0];
+    }
+    else{
+        row_size = parseInt(line)[1];
+        col_size = parseInt(line)[0];
+    }
+    if (!transposeMode && row_size <= (col_size * 3) / 4){
+        transposeMode = true;
+        swap(row_size,col_size);
+    }
+
     board.resize(row_size);
     for (int i = 0; i < row_size; i++)
     {
@@ -497,28 +595,116 @@ int main(int argc, const char * argv[]) {
     rows.resize(row_size);
     cols.resize(col_size);
     getline(file,line);
-    for (int i = 0; i < col_size; i++)
-    {
+    if (transposeMode){
+        for (int i = 0; i < row_size; i++)
+        {
+            getline(file,line);
+            rows[i] = parseInt(line);
+        }
         getline(file,line);
-        cols[i] = parseInt(line);
+        for (int i = 0; i < col_size; i++)
+        {
+            getline(file,line);
+            cols[i] = parseInt(line);
+        }
     }
-    getline(file,line);
-    for (int i = 0; i < row_size; i++)
-    {
+    else{
+        for (int i = 0; i < col_size; i++)
+        {
+            getline(file,line);
+            cols[i] = parseInt(line);
+        }
         getline(file,line);
-        rows[i] = parseInt(line);
+        for (int i = 0; i < row_size; i++)
+        {
+            getline(file,line);
+            rows[i] = parseInt(line);
+        }
     }
     file.close();
     vector<vector<bool>> visited(row_size,vector<bool>(col_size,false));
     string fname = string(argv[1]).find_last_of("/") == string::npos ? string(argv[1]) : string(argv[1]).substr(string(argv[1]).find_last_of("/")+1);
+    auto superpos_time_start = chrono::high_resolution_clock::now();
+    for (int r = 0; r < board.size(); r++){
+        int sum_of_row = 0;
+        for (int i = 0; i < rows[r].size(); i++){
+            sum_of_row += rows[r][i];
+        }
+        string row = "";
+        for (int c = 0; c < board[r].size(); c++){
+            row += board[r][c];
+        }
+        vector<bool> super_postion_cross(col_size,true);
+        vector<bool> super_postion_square(col_size,true);
+        superposition(row, col_size, rows[r], super_postion_cross, super_postion_square);
+        bool isCollided = false;
+        for (int c = 0; !isCollided && c < col_size; c++){
+            if (super_postion_cross[c] && super_postion_square[c]){
+                isCollided = true;
+            }
+            else if (super_postion_cross[c]){
+                board[r][c] = CROSS;
+                visited[r][c] = true;
+            }
+            else if (super_postion_square[c]){
+                board[r][c] = FILL;
+                visited[r][c] = true;
+            }
+        }
+        if (isCollided){
+            cout << "No solution" << endl;
+            return 0;
+        }
+        //cout << "Row " << r << " done" << endl;
+    }
+    for(int c = 0; c < board[0].size(); c++){
+        string col = "";
+        for (int r = 0; r < board.size(); r++){
+            col += board[r][c];
+        }
+        vector<bool> super_postion_cross(row_size,true);
+        vector<bool> super_postion_square(row_size,true);
+        superposition(col, row_size, cols[c], super_postion_cross, super_postion_square);
+        bool isCollided = false;
+        for (int r = 0; !isCollided && r < row_size; r++){
+            if (super_postion_cross[r] && super_postion_square[r]){
+                isCollided = true;
+            }
+            else if (super_postion_cross[r]){
+                board[r][c] = CROSS;
+                visited[r][c] = true;
+            }
+            else if (super_postion_square[r]){
+                board[r][c] = FILL;
+                visited[r][c] = true;
+            }
+        }
+        if (isCollided){
+            cout << "No solution" << endl;
+            return 0;
+        }
+        //cout << "Col " << c << " done" << endl;
+    }
+    auto superpos_time_stop = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::microseconds>(superpos_time_stop-superpos_time_start);
+    if (duration.count() > 60000000){
+        cout << "Superposition time taken: " << duration.count() / 60000000.0 << " minutes" << endl;
+    }
+    else if (duration.count() > 1000000){
+        cout << "Superposition time taken: " << duration.count() / 1000000.0 << " seconds" << endl;
+    }
+    else if (duration.count() > 1000){
+        cout << "Superposition time taken: " << duration.count() / 1000.0 << " milliseconds" << endl;
+    }
+    else{
+        cout << "Superposition time taken: " << duration.count() << " microseconds" << endl;
+    }
     cout << "Solving " << fname << "..." << endl;
-    if (isStepByStep)
-        system("cls");
     auto start = chrono::high_resolution_clock::now();
     nonogram_quick_place(visited);
     backtrack(visited,0,0);
     auto stop = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::microseconds>(stop-start);
+    duration = chrono::duration_cast<chrono::microseconds>(stop-start);
     //Print time in minutes if it takes more than 1 minute
     //Print time in seconds if it takes less than 1 minute
     //Print time in milliseconds if it takes less than 1 second
@@ -545,13 +731,21 @@ int main(int argc, const char * argv[]) {
         cout << "Failed to open output file" << endl;
         return 0;
     }
-    for (int i = 0; i < solution.size(); i++)
-    {
-        for (int j = 0; j < solution[i].size(); j++)
-        {
-            output << solution[i][j];
+    if (transposeMode){
+        for (int c = 0; c < board[0].size(); c++){
+            for (int r = 0; r < board.size(); r++){
+                output << board[r][c];
+            }
+            output << endl;
         }
-        output << endl;
+    }
+    else{
+        for (int r = 0; r < board.size(); r++){
+            for (int c = 0; c < board[r].size(); c++){
+                output << board[r][c];
+            }
+            output << endl;
+        }
     }
     if (duration.count() > 60000000){
         output << "Time taken: " << duration.count() / 60000000.0 << " minutes" << endl;
