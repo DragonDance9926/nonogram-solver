@@ -473,10 +473,15 @@ int main(int argc, const char * argv[]) {
         return 0;
     }
     system("cls");
-    //Hide cursor
-    cout << "\033[?25l";
     fstream file;
     file.open(argv[1]);
+    if (!file){
+        cout << "File not found" << endl;
+        return 0;
+    }
+    //Hide cursor
+    cout << "\033[?25l";
+    cout << "Loading..."<< endl;
     isStepByStep = argv[2][0] == '1';
     string line;
     int row_size,col_size;
@@ -505,6 +510,10 @@ int main(int argc, const char * argv[]) {
     }
     file.close();
     vector<vector<bool>> visited(row_size,vector<bool>(col_size,false));
+    string fname = string(argv[1]).find_last_of("/") == string::npos ? string(argv[1]) : string(argv[1]).substr(string(argv[1]).find_last_of("/")+1);
+    cout << "Solving " << fname << "..." << endl;
+    if (isStepByStep)
+        system("cls");
     auto start = chrono::high_resolution_clock::now();
     nonogram_quick_place(visited);
     backtrack(visited,0,0);
@@ -528,7 +537,14 @@ int main(int argc, const char * argv[]) {
     }
     cout << "\033[?25h";
     fstream output;
-    output.open("output_" + string(argv[1]),ios::out);
+
+
+
+    output.open("./outputs/" + fname,ios::out);
+    if (output.fail()){
+        cout << "Failed to open output file" << endl;
+        return 0;
+    }
     for (int i = 0; i < solution.size(); i++)
     {
         for (int j = 0; j < solution[i].size(); j++)
@@ -537,7 +553,19 @@ int main(int argc, const char * argv[]) {
         }
         output << endl;
     }
+    if (duration.count() > 60000000){
+        output << "Time taken: " << duration.count() / 60000000.0 << " minutes" << endl;
+    }
+    else if (duration.count() > 1000000){
+        output << "Time taken: " << duration.count() / 1000000.0 << " seconds" << endl;
+    }
+    else if (duration.count() > 1000){
+        output << "Time taken: " << duration.count() / 1000.0 << " milliseconds" << endl;
+    }
+    else{
+        output << "Time taken: " << duration.count() << " microseconds" << endl;
+    }
     output.close();
-    cout << "Output file: output_" << argv[1] << endl;
+    cout << "Output file: " << "./outputs/" + fname << endl;
     return 0;
 }
