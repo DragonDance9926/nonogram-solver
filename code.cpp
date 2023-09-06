@@ -15,8 +15,52 @@ vector<vector<char>> solution;
 bool foundSolution = false;
 bool isStepByStep = false;
 bool transposeMode = false;
+bool timeLimitExceeded = false;
+auto start = chrono::high_resolution_clock::now();
+auto superpos_time_start = chrono::high_resolution_clock::now();
+// Time limit : 10 minutes in default
+unsigned long long timeLimit = 10 * 60 * 1000 * 1000;
+
+
+string fpath(int r, int c){
+    if (r * c < 100){
+        return "smaller_than_100_squares";
+    }
+    else if (r * c < 400){
+        return "between_100_and_400_squares";
+    }
+    else if (r * c < 900){
+        return "between_400_and_900_squares";
+    }
+    else if (r * c < 1600){
+        return "between_900_and_1600_squares";
+    }
+    else if (r * c < 2500){
+        return "between_1600_and_2500_squares";
+    }
+    else if (r * c < 3600){
+        return "between_2500_and_3600_squares";
+    }
+    else if (r * c < 4900){
+        return "between_3600_and_4900_squares";
+    }
+    else if (r * c < 6400){
+        return "between_4900_and_6400_squares";
+    }
+    else if (r * c < 8100){
+        return "between_6400_and_8100_squares";
+    }
+    else {
+        return "bigger_than_8100_squares";
+    }
+    
+}
+
 
 vector<int> parseInt(string &line){
+    if (line == "" || line == "0"){
+        return {0};
+    }
     vector<int> res;
     int num = 0;
     for(int i = 0;i < line.size();i++){
@@ -28,7 +72,9 @@ vector<int> parseInt(string &line){
             num = num*10 + (line[i]-'0');
         }
     }
-    res.push_back(num);
+    if (num != 0){
+        res.push_back(num);
+    }
     return res;
 }
 
@@ -370,7 +416,12 @@ bool checkNonogramColSoFar(int row, int col){
 
 
 void backtrack(vector<vector<bool>> &visited, int row, int col){
-    if (foundSolution){
+    auto time = chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now()-start).count();
+    if (time > timeLimit){
+        timeLimitExceeded = true;
+        return;
+    }
+    if (foundSolution || timeLimitExceeded){
         return;
     }
     if (row == board.size()){
@@ -478,6 +529,13 @@ void backtrack(vector<vector<bool>> &visited, int row, int col){
 
 
 void superposition (string &s, int size, vector<int> &rows,vector<bool> &super_postion_cross, vector<bool> &super_postion_square, int index = 0, int rows_index = 0, int current_filled_square = 0){
+    if (timeLimitExceeded){
+        return;
+    }
+    if (chrono::duration_cast<chrono::microseconds>(chrono::high_resolution_clock::now()-superpos_time_start).count() > timeLimit){
+        timeLimitExceeded = true;
+        return;
+    }
     //cout << "String: " << s << " Index: " << index << " Rows_index: " << rows_index << " Current_filled_square: " << current_filled_square << endl;
     if (index == size){
         if (rows_index == rows.size() || (rows_index == rows.size() - 1 && current_filled_square == rows[rows_index])){
@@ -553,11 +611,14 @@ void superposition (string &s, int size, vector<int> &rows,vector<bool> &super_p
 int main(int argc, const char * argv[]) {
     
     if (argc < 3){
-        cout << "Usage: ./nonogram <input_file> <0 for only show solution, 1 for showing the steps> <0 for normal mode, 1 for transpose mode if not specified, it will determined by the input file>" << endl;
+        cout << "Usage: ./nonogram <input_file> <0 for only show solution, 1 for showing the steps> <transpose mode, 0 for normal, 1 for transpose, it will be determined automatically if not specified> <Time limit in minutes, default is 10 minutes>" << endl;
         return 0;
     }
     if (argc == 4){
         transposeMode = argv[3][0] == '1';
+    }
+    if (argc == 5){
+        timeLimit = atoi(argv[4]) * 60 * 1000 * 1000;
     }
     system("cls");
     fstream file;
@@ -623,68 +684,98 @@ int main(int argc, const char * argv[]) {
     }
     file.close();
     vector<vector<bool>> visited(row_size,vector<bool>(col_size,false));
-    string fname = string(argv[1]).find_last_of("/") == string::npos ? string(argv[1]) : string(argv[1]).substr(string(argv[1]).find_last_of("/")+1);
-    auto superpos_time_start = chrono::high_resolution_clock::now();
-    for (int r = 0; r < board.size(); r++){
-        int sum_of_row = 0;
-        for (int i = 0; i < rows[r].size(); i++){
-            sum_of_row += rows[r][i];
-        }
-        string row = "";
-        for (int c = 0; c < board[r].size(); c++){
-            row += board[r][c];
-        }
-        vector<bool> super_postion_cross(col_size,true);
-        vector<bool> super_postion_square(col_size,true);
-        superposition(row, col_size, rows[r], super_postion_cross, super_postion_square);
-        bool isCollided = false;
-        for (int c = 0; !isCollided && c < col_size; c++){
-            if (super_postion_cross[c] && super_postion_square[c]){
-                isCollided = true;
-            }
-            else if (super_postion_cross[c]){
-                board[r][c] = CROSS;
-                visited[r][c] = true;
-            }
-            else if (super_postion_square[c]){
-                board[r][c] = FILL;
-                visited[r][c] = true;
-            }
-        }
-        if (isCollided){
-            cout << "No solution" << endl;
-            return 0;
-        }
-        //cout << "Row " << r << " done" << endl;
-    }
-    for(int c = 0; c < board[0].size(); c++){
-        string col = "";
+    string fname = string(argv[1]).find_last_of("/") == string::npos ? string(argv[1]).substr(string(argv[1]).find_last_of("\\")+1) : string(argv[1]).substr(string(argv[1]).find_last_of("/")+1);
+    bool isChanged = true;
+    
+    superpos_time_start = chrono::high_resolution_clock::now();
+    while (isChanged){
+        isChanged = false;
         for (int r = 0; r < board.size(); r++){
-            col += board[r][c];
-        }
-        vector<bool> super_postion_cross(row_size,true);
-        vector<bool> super_postion_square(row_size,true);
-        superposition(col, row_size, cols[c], super_postion_cross, super_postion_square);
-        bool isCollided = false;
-        for (int r = 0; !isCollided && r < row_size; r++){
-            if (super_postion_cross[r] && super_postion_square[r]){
-                isCollided = true;
+            int sum_of_row = 0;
+            for (int i = 0; i < rows[r].size(); i++){
+                sum_of_row += rows[r][i];
             }
-            else if (super_postion_cross[r]){
-                board[r][c] = CROSS;
-                visited[r][c] = true;
+            if (sum_of_row < col_size / 2){
+                continue;
             }
-            else if (super_postion_square[r]){
-                board[r][c] = FILL;
-                visited[r][c] = true;
+            string row = "";
+            for (int c = 0; c < board[r].size(); c++){
+                row += board[r][c];
             }
+            vector<bool> super_postion_cross(col_size,true);
+            vector<bool> super_postion_square(col_size,true);
+            superposition(row, col_size, rows[r], super_postion_cross, super_postion_square);
+            bool isCollided = false;
+            for (int c = 0; !isCollided && c < col_size; c++){
+                if (visited[r][c]){
+                    continue;
+                }
+                if (super_postion_cross[c] && super_postion_square[c]){
+                    isCollided = true;
+                }
+                else if (super_postion_cross[c]){
+                    board[r][c] = CROSS;
+                    visited[r][c] = true;
+                    isChanged = true;
+                }
+                else if (super_postion_square[c]){
+                    board[r][c] = FILL;
+                    visited[r][c] = true;
+                    isChanged = true;
+                }
+            }
+            if (isCollided){
+                cout << "No solution" << endl;
+                return 0;
+            }
+            //cout << "Row " << r << " done" << endl;
         }
-        if (isCollided){
-            cout << "No solution" << endl;
-            return 0;
+        for(int c = 0; c < board[0].size(); c++){
+            int sum_of_col = 0;
+            for (int i = 0; i < cols[c].size(); i++){
+                sum_of_col += cols[c][i];
+            }
+            if (sum_of_col < row_size / 2){
+                continue;
+            }
+
+            string col = "";
+            for (int r = 0; r < board.size(); r++){
+                col += board[r][c];
+            }
+            vector<bool> super_postion_cross(row_size,true);
+            vector<bool> super_postion_square(row_size,true);
+            superposition(col, row_size, cols[c], super_postion_cross, super_postion_square);
+            bool isCollided = false;
+            for (int r = 0; !isCollided && r < row_size; r++){
+                if (visited[r][c]){
+                    continue;
+                }
+                if (super_postion_cross[r] && super_postion_square[r]){
+                    isCollided = true;
+                }
+                else if (super_postion_cross[r]){
+                    board[r][c] = CROSS;
+                    visited[r][c] = true;
+                    isChanged = true;
+                }
+                else if (super_postion_square[r]){
+                    board[r][c] = FILL;
+                    visited[r][c] = true;
+                    isChanged = true;
+                }
+            }
+            if (isCollided){
+                cout << "No solution" << endl;
+                return 0;
+            }
+            //cout << "Col " << c << " done" << endl;
         }
-        //cout << "Col " << c << " done" << endl;
     }
+    
+    
+    
+    
     auto superpos_time_stop = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(superpos_time_stop-superpos_time_start);
     if (duration.count() > 60000000){
@@ -700,7 +791,7 @@ int main(int argc, const char * argv[]) {
         cout << "Superposition time taken: " << duration.count() << " microseconds" << endl;
     }
     cout << "Solving " << fname << "..." << endl;
-    auto start = chrono::high_resolution_clock::now();
+    start = chrono::high_resolution_clock::now();
     nonogram_quick_place(visited);
     backtrack(visited,0,0);
     auto stop = chrono::high_resolution_clock::now();
@@ -709,57 +800,91 @@ int main(int argc, const char * argv[]) {
     //Print time in seconds if it takes less than 1 minute
     //Print time in milliseconds if it takes less than 1 second
     //Otherwise print time in microseconds
-    if (duration.count() > 60000000){
-        cout << "Time taken: " << duration.count() / 60000000.0 << " minutes" << endl;
-    }
-    else if (duration.count() > 1000000){
-        cout << "Time taken: " << duration.count() / 1000000.0 << " seconds" << endl;
-    }
-    else if (duration.count() > 1000){
-        cout << "Time taken: " << duration.count() / 1000.0 << " milliseconds" << endl;
-    }
-    else{
-        cout << "Time taken: " << duration.count() << " microseconds" << endl;
-    }
-    cout << "\033[?25h";
-    fstream output;
-
-
-
-    output.open("./outputs/" + fname,ios::out);
-    if (output.fail()){
-        cout << "Failed to open output file" << endl;
-        return 0;
-    }
-    if (transposeMode){
-        for (int c = 0; c < board[0].size(); c++){
+    if (foundSolution){
+        if (duration.count() > 60000000){
+            cout << "Time taken: " << duration.count() / 60000000.0 << " minutes" << endl;
+        }
+        else if (duration.count() > 1000000){
+            cout << "Time taken: " << duration.count() / 1000000.0 << " seconds" << endl;
+        }
+        else if (duration.count() > 1000){
+            cout << "Time taken: " << duration.count() / 1000.0 << " milliseconds" << endl;
+        }
+        else{
+            cout << "Time taken: " << duration.count() << " microseconds" << endl;
+        }
+        cout << "\033[?25h";
+        //Check if the outputs folder exists
+        if (!filesystem::exists("./outputs/" + fpath(rows.size(),cols.size()))){
+            filesystem::create_directory("./outputs/");
+            filesystem::create_directory("./outputs/" + fpath(rows.size(),cols.size()));
+        }
+        fstream output;
+        output.open("./outputs/" + fpath(rows.size(),cols.size()) + "/" + fname,ios::out);
+        if (output.fail()){
+            cout << "Failed to open output file" << endl;
+            return 0;
+        }
+        if (transposeMode){
+            for (int c = 0; c < board[0].size(); c++){
+                for (int r = 0; r < board.size(); r++){
+                    output << solution[r][c];
+                }
+                output << endl;
+            }
+        }
+        else{
             for (int r = 0; r < board.size(); r++){
-                output << board[r][c];
+                for (int c = 0; c < board[r].size(); c++){
+                    output << solution[r][c];
+                }
+                output << endl;
             }
-            output << endl;
         }
+        if (duration.count() > 60000000){
+            output << "Time taken: " << duration.count() / 60000000.0 << " minutes" << endl;
+        }
+        else if (duration.count() > 1000000){
+            output << "Time taken: " << duration.count() / 1000000.0 << " seconds" << endl;
+        }
+        else if (duration.count() > 1000){
+            output << "Time taken: " << duration.count() / 1000.0 << " milliseconds" << endl;
+        }
+        else{
+            output << "Time taken: " << duration.count() << " microseconds" << endl;
+        }
+        output.close();
+        cout << "Output file: " << "./outputs/" + fpath(rows.size(),cols.size()) + "/" + fname << endl;
+        // move the txt file to the solved folder
+        //Check if the solved folder exists
+        if (!filesystem::exists("./solved/" + fpath(rows.size(),cols.size()))){
+            filesystem::create_directory("./solved/");
+            filesystem::create_directory("./solved/" + fpath(rows.size(),cols.size()));
+        }
+        //move the input file to the solved folder
+        filesystem::rename(string(argv[1]),"./solved/" + fpath(rows.size(),cols.size()) + "/" + fname);
     }
     else{
-        for (int r = 0; r < board.size(); r++){
-            for (int c = 0; c < board[r].size(); c++){
-                output << board[r][c];
-            }
-            output << endl;
+        if (timeLimitExceeded){
+            cout << "Time limit exceeded" << endl;
         }
+        else{
+            cout << "No solution" << endl;
+        }
+        // move the txt file to the could_not_solve folder
+        //Check if the could_not_solve folder exists
+        if (!filesystem::exists("./could_not_solve/" + fpath(rows.size(),cols.size()))){
+            filesystem::create_directory("./could_not_solve/");
+            filesystem::create_directory("./could_not_solve/" + fpath(rows.size(),cols.size()));
+        }
+        //move the input file to the could_not_solve folder
+        filesystem::rename(string(argv[1]),"./could_not_solve/" + fpath(rows.size(),cols.size()) + "/" + fname);
+        cout << "The input file has been moved to the could_not_solve folder" << endl;
     }
-    if (duration.count() > 60000000){
-        output << "Time taken: " << duration.count() / 60000000.0 << " minutes" << endl;
-    }
-    else if (duration.count() > 1000000){
-        output << "Time taken: " << duration.count() / 1000000.0 << " seconds" << endl;
-    }
-    else if (duration.count() > 1000){
-        output << "Time taken: " << duration.count() / 1000.0 << " milliseconds" << endl;
-    }
-    else{
-        output << "Time taken: " << duration.count() << " microseconds" << endl;
-    }
-    output.close();
-    cout << "Output file: " << "./outputs/" + fname << endl;
+
+
+
+
+    
     return 0;
 }
